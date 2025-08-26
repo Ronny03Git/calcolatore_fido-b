@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calcolatore interessi</title>
+    <link rel="stylesheet" href="calcolatore.css">
+    <link  href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap"
+           rel="stylesheet">
+
+    <!-- Chart.js da CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS da CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* Stessi stili di base del tuo esempio */
+
+        h1, h2 {
+            font-weight: 500;
+            margin-bottom: 15px;
+        }
+        h1 {
+            font-size: 2rem;
+            text-align: center;
+            color: #2d3436;
+        }
+        h2 {
+            font-size: 1.5rem;
+            color: #2d3436;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 10px;
+        }
+
+        .container{
+            line-height: 1.4;
+        }
+
+
+        .container {
+            max-width: 1200px;
+            background: #fff;
+            margin: 20px auto;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .intro {
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+            color: #2d3436;
+            text-align: left;
+        }
+        .explanation {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #eef3f8;
+            border-left: 4px solid #4aa14a;
+            border-radius: 20px;
+            font-size: 0.95rem;
+            color: #2d3436;
+        }
+        .input-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            flex: 1;
+            min-width: 200px;
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group label {
+            margin-bottom: 8px;
+            color: #636e72;
+            font-size: 0.9rem;
+        }
+        .form-group input,
+        .form-group select {
+            padding: 12px 15px;
+            font-size: 1rem;
+            border: 1px solid #dfe6e9;
+            border-radius: 20px;
+            background: #fafafa;
+            transition: border 0.3s, box-shadow 0.3s;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #4aa14a;
+            box-shadow: 0 0 5px rgba(9, 132, 227, 0.3);
+            outline: none;
+        }
+        .btn-calcola {
+            padding: 12px 30px;
+            background: #4aa14a;
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 10px;
+            flex-shrink: 0;
+        }
+        .btn-calcola:hover {
+            background: #447f5b;
+        }
+        .parametri, .tabella-confronto, .risultati {
+            margin-bottom: 30px;
+        }
+        .parametri-list {
+            list-style: none;
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        .parametri-list li {
+            padding: 12px 15px;
+            border: 1px solid #dfe6e9;
+            border-radius: 20px;
+            background: #f1f2f6;
+            font-size: 0.95rem;
+            color: #2d3436;
+        }
+        .summary-table, .compare-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 20px;
+            font-size: 0.95rem;
+            overflow: hidden;
+        }
+        .summary-table th,
+        .summary-table td,
+        .compare-table th,
+        .compare-table td {
+            padding: 12px;
+            border: 1px solid #dfe6e9;
+            text-align: center;
+        }
+        .summary-table th,
+        .compare-table th {
+            background: #dfe6e9;
+            color: #2d3436;
+        }
+        .summary-table thead th:first-child,
+        .compare-table thead th:first-child {
+            border-top-left-radius: 20px;
+        }
+        .summary-table thead th:last-child,
+        .compare-table thead th:last-child {
+            border-top-right-radius: 20px;
+        }
+        .highlight {
+            background: rgba(200, 230, 201, 0.7) !important;
+            font-weight: bold;
+        }
+        .chart-wrapper {
+            margin-top: 30px;
+            position: relative;
+            width: 100%;
+            height: 400px;
+        }
+        #myChart {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .btn-excel {
+            padding: 12px 30px;
+            background: #4aa14a;
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: block;
+            margin: 20px auto 0;
+        }
+        .btn-excel:hover {
+            background: #447f5b;
+        }
+        @media (max-width: 768px) {
+            .input-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .btn-calcola, .btn-excel {
+                /*width: 100%;*/
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="layout-container">
+    <!-- Sidebar Container -->
+    <div class="sidebar-container">
+        <aside class="sidebar">
+            <!-- Sezione Logo -->
+            <!-- Al posto del vecchio logo, inserisci la freccia indietro -->
+            <div class="back-button-sidebar" style="margin-bottom: 20px; text-align: center;">
+                <a href="javascript:history.back()" title="Indietro" style="display: inline-flex; align-items: center; text-decoration: none; color: var(--text-color);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40px" height="40px" viewBox="0 0 32 32">
+                        <title>arrow-left-circle</title>
+                        <desc>Created with Sketch Beta.</desc>
+                        <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                            <g fill="#F2F2F2" transform="translate(-256.000000, -1087.000000)">
+                                <path d="M279,1102 L268.414,1102 L272.536,1097.88 C272.926,1097.49 272.926,1096.86 272.536,1096.46 C272.145,1096.07 271.512,1096.07 271.121,1096.46 L265.464,1102.12 C265.225,1102.36 265.15,1102.69 265.205,1103 C265.15,1103.31 265.225,1103.64 265.464,1103.88 L271.121,1109.54 C271.512,1109.93 272.145,1109.93 272.536,1109.54 C272.926,1109.15 272.926,1108.51 272.536,1108.12 L268.414,1104 L279,1104 C279.552,1104 280,1103.55 280,1103 C280,1102.45 279.552,1102 279,1102 Z M272,1117 C264.268,1117 258,1110.73 258,1103 C258,1095.27 264.268,1089 272,1089 C279.732,1089 286,1095.27 286,1103 C286,1110.73 279.732,1117 272,1117 Z M272,1087 C263.164,1087 256,1094.16 256,1103 C256,1111.84 263.164,1119 272,1119 C280.836,1119 288,1111.84 288,1103 C288,1094.16 280.836,1087 272,1087 Z"></path>
+                            </g>
+                        </g>
+                    </svg>
+                </a>
+            </div>
+            <!-- Sezione Menù -->
+            <div class="container-voci">
+                <div class="navigation">
+                    <!-- Menu-item cliccabili -->
+                    <ul>
+                        <li class="list">
+                            <a href="../index.html">
+                                <img src="../assets/icons/home.png" alt="Home Icon" class="icon">
+                                <span class="text">Home</span>
+                            </a>
+                        </li>
+
+                        <li class="list">
+                            <a href="../notifiche.html">
+                                <img src="../assets/icons/notifiche.png" alt="Notifications Icon" class="icon">
+                                <span class="text">Notifiche</span>
+                            </a>
+                        </li>
+
+                        <li class="list">
+                            <a href="../profilo.html">
+                                <img src="../assets/icons/profilo.png" alt="Profile Icon" class="icon">
+                                <span class="text">Profilo</span>
+                            </a>
+                        </li>
+
+                        <li class="list ">
+                            <a href="../supporto.html">
+                                <img src="../assets/icons/domande.png" alt="Support Icon" class="icon">
+                                <span class="text">Supporto</span>
+                            </a>
+                        </li>
+                        <div class="circle-indicator">
+                            <div class="rectangle-attachment"></div>
+                            <div class="squaretop"></div>
+                            <div class="squarebottom"></div>
+                        </div>
+                    </ul>
+                </div>
+            </div>
+
+        </aside>
+    </div>
+
+    <!-- Content Container -->
+    <div class="main-container">
+        <!-- Barra superiore -->
+        <!-- Top Bar aggiornata -->
+        <div class="top-bar" style="position: relative; display: flex; align-items: center; justify-content: center; height: 45px; background-color: var(--secondary-color); border-radius: 20px; margin: 15px 0 -6px 0; padding: 0 10px;">
+            <!-- Freccia Back (da mostrare solo su mobile) -->
+            <div class="top-bar-back" style="display: none;">
+                <a href="javascript:history.back()" title="Indietro">
+                    <!-- Copia qui lo stesso SVG della sidebar -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40px" height="40px" viewBox="0 0 32 32">
+                        <title>arrow-left-circle</title>
+                        <desc>Created with Sketch Beta.</desc>
+                        <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                            <g fill="#F2F2F2" transform="translate(-256.000000, -1087.000000)">
+                                <path d="M279,1102 L268.414,1102 L272.536,1097.88 C272.926,1097.49 272.926,1096.86
+                   272.536,1096.46 C272.145,1096.07 271.512,1096.07 271.121,1096.46
+                   L265.464,1102.12 C265.225,1102.36 265.15,1102.69 265.205,1103
+                   C265.15,1103.31 265.225,1103.64 265.464,1103.88
+                   L271.121,1109.54 C271.512,1109.93 272.145,1109.93 272.536,1109.54
+                   C272.926,1109.15 272.926,1108.51 272.536,1108.12
+                   L268.414,1104 L279,1104 C279.552,1104 280,1103.55 280,1103
+                   C280,1102.45 279.552,1102 279,1102 Z
+                   M272,1117 C264.268,1117 258,1110.73 258,1103
+                   C258,1095.27 264.268,1089 272,1089
+                   C279.732,1089 286,1095.27 286,1103
+                   C286,1110.73 279.732,1117 272,1117 Z
+                   M272,1087 C263.164,1087 256,1094.16 256,1103
+                   C256,1111.84 263.164,1119 272,1119
+                   C280.836,1119 288,1111.84 288,1103
+                   C288,1094.16 280.836,1087 272,1087 Z"></path>
+                            </g>
+                        </g>
+                    </svg>
+                </a>
+            </div>
+            <!-- Elemento centrale: logo -->
+            <div class="top-bar-center">
+                <img src="../assets/adifesa_logo_footer.png" alt="Logo" >
+            </div>
+            <!-- Elemento sinistro: scritta "contatta il supporto" -->
+            <div class="top-bar-left" style="position: absolute; left: 10px; font-size: 1.3rem; color: var(--text-color);">
+                Calcolatore fido bancario
+            </div>
+            <!-- Elemento destro: saluto -->
+            <div class="top-bar-right" style="position: absolute; right: 10px; font-size: 1rem; color: var(--text-color);">
+                Ciao, <strong>Giorgio</strong>
+            </div>
+        </div>
+
+        <div class="content-container">
+            <main class="main-content">
+                <div class="container">
+                    <main class="main-layout">
+                        <div class="container-pagina">
+
+                            <h1>Calcolo fido bancario</h1>
+
+                            <!-- PARAGRAFO INTRODUTTIVO -->
+                            <p class="intro">
+                                Il fido in conto corrente è una forma di credito a breve termine. Ti consente di utilizzare una somma di denaro
+                                messa a disposizione dalla banca, pagando interessi solo sulla quota effettivamente utilizzata.
+                                Nel seguente simulatore, ipotizziamo per semplicità che il fido richiesto sia utilizzato interamente
+                                (e immediatamente) per l’intera durata selezionata (1, 2 o 3 mesi), senza variazioni di tasso.
+                                <br><br>
+                                I valori di TAN, TAEG, interessi, commissioni e importo totale dovuto forniscono un'idea del costo complessivo
+                                del credito. Il TAEG è calcolato in base ai criteri di trasparenza bancaria, includendo anche l’eventuale
+                                commissione onnicomprensiva di messa a disposizione dei fondi (CMDF).
+                            </p>
+
+                            <!-- Disclaimer -->
+                            <div class="explanation">
+                                <p>
+                                    Attenzione! Questo è un simulatore puramente informativo. ADifesa non offre alcun prodotto bancario.
+                                    I risultati non costituiscono un’offerta e non garantiscono la concessione del fido.
+                                    Per condizioni reali (tassi, istruttorie, spese accessorie) rivolgersi direttamente all'istituto di credito.
+                                </p>
+                            </div>
+
+                            <!-- Sezione input -->
+
+                            <!-- Stato tassi / fonte -->
+                            <div class="tassi-header" style="display:flex; align-items:center; gap:12px; margin: 8px 0 4px 0;">
+                                <div id="badge-tassi" style="font-size:0.95rem; color:#636e72;">Indice base: caricamento…</div>
+                                <button type="button" class="btn-calcola" id="btnRefreshTassi">Aggiorna</button>
+                            </div>
+
+                            <div class="input-section">
+                                <!-- Importo Fido -->
+                                <div class="form-group">
+                                    <label for="importoFido">Importo Fido Richiesto (€)</label>
+                                    <input type="text" id="importoFido" value="40000">
+                                </div>
+                                <!-- Durata Fido in mesi (1-3) -->
+                                <div class="form-group">
+                                    <label for="durata">Durata Fido (mesi)</label>
+                                    <select id="durata">
+                                        <option value="1">1</option>
+                                        <option value="2" selected>2</option>
+                                        <option value="3">3</option>
+                                    </select>
+                                </div>
+                                <!-- Patrimonio detenuto (in base alle fasce) -->
+
+                                <div class="form-group">
+                                    <label for="patrimonio">Patrimonio presso la Banca</label>
+                                    <select id="patrimonio">
+                                        <option value="10000">Da 5.000,00 a 20.000,00</option>
+                                        <option value="30000">Da 20.000,01 a 75.000,00</option>
+                                        <option value="90000">Da 75.000,01 a 100.000,00</option>
+                                        <option value="200000">Da 100.000,01 a 350.000,00</option>
+                                        <option value="500000">Da 350.000,01 a 750.000,00</option>
+                                        <option value="800000" selected>Da 750.000,01 a 1.000.000,00</option>
+                                        <option value="1500000">Da 1.000.000,01 a 2.000.000,00</option>
+                                        <option value="3000000">Oltre 2.000.000,00</option>
+                                    </select>
+                                </div>
+
+
+                                <button class="btn-calcola" id="btnCalcola">CALCOLA</button>
+                            </div>
+
+                            <!-- Parametri -->
+                            <div class="parametri">
+                                <h2>PARAMETRI FIDO</h2>
+                                <ul class="parametri-list">
+                                    <!-- Verranno riempiti via JS -->
+                                </ul>
+                            </div>
+
+                            <!-- Tabella di confronto (1-2-3 mesi) -->
+                            <div class="tabella-confronto">
+                                <h2>CONFRONTO DURATE (1, 2, 3 mesi)</h2>
+                                <table class="compare-table">
+                                    <thead>
+                                    <tr>
+                                        <th>Durata (mesi)</th>
+                                        <th>TAN</th>
+                                        <th>TAEG</th>
+                                        <th>Interessi</th>
+                                        <th>Commissione</th>
+                                        <th>Costo Totale</th>
+                                        <th>Importo Totale Dovuto</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody id="compare-body">
+                                    <!-- Riempito via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Risultati / Sommario -->
+                            <div class="risultati">
+                                <h2>DETTAGLIO RISULTATI (Durata selezionata)</h2>
+                                <table class="summary-table">
+                                    <thead>
+                                    <tr>
+                                        <th>TAN (%)</th>
+                                        <th>TAEG (%)</th>
+                                        <th>Spread (%)</th>
+                                        <th>Interessi (€)</th>
+                                        <th>Comm. Onnicomp. (€)</th>
+                                        <th>Costo Totale (€)</th>
+                                        <th>Totale Dovuto (€)</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody id="summary-body">
+                                    <!-- Riempito via JS -->
+                                    </tbody>
+                                </table>
+
+                                <!-- Grafico -->
+                                <div class="chart-wrapper">
+                                    <canvas id="myChart"></canvas>
+                                </div>
+                                <button class="btn-excel" id="btnExcel">Scarica Excel</button>
+                            </div>
+
+
+                        </div><!-- /container -->
+
+
+
+
+
+
+
+
+
+
+
+
+                    </main>
+                </div>
+            </main>
+            <!-- Bottom Navigation Bar (mobile <900px) -->
+            <nav class="bottom-nav">
+
+                <!-- quadrato rosso + sovrapposto quello arrotondato -->
+
+                <!-- quadrati rossi -->
+                <span class="badge red left"></span>
+                <span class="badge red right"></span>
+                <!-- quadrati verdi -->
+                <span class="badge green left"></span>
+                <span class="badge green right"></span>
+
+
+                <ul>
+                    <li class="list" data-target="index.html">
+                        <a href="../index.html">
+                            <span class="icon"><img src="../assets/icons/home.png" alt="Home"></span>
+                            <span class="text">Home</span>
+                        </a>
+                    </li>
+                    <li class="list" data-target="notifiche.html">
+                        <a href="../notifiche.html">
+                            <span class="icon"><img src="../assets/icons/notifiche.png" alt="Notifiche"></span>
+                            <span class="text">Notifiche</span>
+                        </a>
+                    </li>
+                    <li class="list" data-target="profilo_mobile.html">
+                        <a href="../profilo.html">
+                            <span class="icon"><img src="../assets/icons/profilo.png" alt="Profilo"></span>
+                            <span class="text">Profilo</span>
+                        </a>
+                    </li>
+                    <li class="list" data-target="supporto.html">
+                        <a href="../supporto.html">
+                            <span class="icon"><img src="../assets/icons/domande.png" alt="Supporto"></span>
+                            <span class="text">Supporto</span>
+                        </a>
+                    </li>
+                    <div class="indicator"></div>
+                    <div class="indicator2"></div>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+</body>
+
+<script>
+    /*hover sidebar*/
+    document.querySelectorAll(".navigation ul li").forEach((item) => {
+        const hoverCircle = document.createElement("div");
+        hoverCircle.classList.add("hover-circle");
+
+        const hoverEffect = document.createElement("div");
+        hoverEffect.classList.add("hover-effect");
+
+        item.appendChild(hoverCircle);
+        hoverCircle.appendChild(hoverEffect);
+
+        // Rende visibile il cerchio sfumato quando il mouse entra
+        item.addEventListener("mouseenter", (e) => {
+            hoverEffect.style.opacity = "1";
+            hoverEffect.style.transform = "translate(-50%, -50%)"; // Reset posizione
+        });
+
+        // Muove il cerchio sfumato con il mouse
+        item.addEventListener("mousemove", (e) => {
+            const rect = hoverCircle.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            hoverEffect.style.transform = `translate(${x - 25}px, ${y - 25}px)`;
+        });
+
+        // Nasconde il cerchio sfumato quando il mouse esce
+        item.addEventListener("mouseleave", () => {
+            hoverEffect.style.opacity = "0"; // Nasconde l'effetto quando esce
+            hoverEffect.style.transform = "translate(-50%, -50%)"; // Reset posizione
+        });
+    });
+
+
+</script>
+<script>
+    const listItems = document.querySelectorAll('.navigation ul li');
+    const circleIndicator = document.querySelector('.circle-indicator');
+    let isAnimating = false;
+
+    // 🔹 POSIZIONE INIZIALE SPECIFICA PER QUESTA PAGINA (MODIFICA IL VALORE)
+    const initialPosition = 360; // Cambia questo valore per ogni pagina
+
+    function setFixedIndicatorPosition() {
+        listItems.forEach((item, index) => {
+            if (index * 120 === initialPosition) {
+                listItems.forEach(el => el.classList.remove('active')); // Rimuove tutte le selezioni
+                item.classList.add('active'); // Imposta solo la voce corretta come attiva
+            }
+        });
+
+        // Resetta la posizione SENZA animazione
+        circleIndicator.style.transition = "none";
+        circleIndicator.style.transform = `translateY(${initialPosition}px) translateX(-50%)`;
+    }
+
+    listItems.forEach((item, index) => {
+        item.addEventListener('click', function(event) {
+            event.preventDefault();
+            if (isAnimating) return;
+            isAnimating = true;
+
+            listItems.forEach(el => el.classList.remove('active'));
+            this.classList.add('active');
+
+            const position = index * 120;
+
+
+            circleIndicator.style.transition = "transform 0.3s ease-in-out";
+            circleIndicator.style.transform = `translateY(${position}px) translateX(-50%)`;
+
+            setTimeout(() => {
+                isAnimating = false;
+                window.location.href = this.querySelector("a").getAttribute("href");
+            }, 0);
+        });
+    });
+
+    // 🔹 Quando la pagina si carica, assegna la posizione fissa DOPO un leggero ritardo
+    /*window.addEventListener("DOMContentLoaded", () => {
+        setTimeout(setFixedIndicatorPosition, 100000); // 10ms di ritardo per evitare il lampeggio
+    });*/
+    setFixedIndicatorPosition();
+
+    // 🔹 Quando si torna indietro con la freccia del browser, riassegna la posizione
+    window.addEventListener("pageshow", setFixedIndicatorPosition);
+</script>
+
+<script>
+    const privacyCheckbox = document.getElementById("privacy-check");
+    const inviaButton = document.querySelector(".btn.invia");
+
+    privacyCheckbox.addEventListener("change", function() {
+        // Se la checkbox è spuntata, il bottone si abilita; altrimenti si disabilita
+        inviaButton.disabled = !this.checked;
+    });
+</script>
+<script>
+    // ------------------ CONFIGURAZIONE DI BASE ------------------
+    // Tasso Euribor 3M (ultimo rilev.) -> 2.714%
+    // Aggiunta fissa +0.997% --> Da ricavare empiricamente dai tuoi esempi
+    // Spread in base alla fascia di patrimonio
+    // Commissione: 0,2% per trimestre se fido > 8.000€ (max 500€) pro rata
+    //              0,4% per trimestre se fido <= 8.000€ (max 20€) pro rata
+
+    let euriborBase = 2.714;   // fisso
+    let extraFisso = 0.997;    // fisso
+    // Mappa fasce (patrimonio) -> spread (valori di esempio, personalizza se vuoi replicare i tuoi)
+    const fascePatrimonio = [
+        {min: 5000, max: 20000, spread: 6.7},
+        {min: 20000.01, max: 75000, spread: 6.2},
+        {min: 75000.01, max: 100000, spread: 4.2},
+        {min: 100000.01, max: 350000, spread: 3.7},
+        {min: 350000.01, max: 750000, spread: 3.2},
+        {min: 750000.01, max: 1000000, spread: 2.95},
+        {min: 1000000.01, max: 2000000, spread: 2.2},
+        {min: 2000000.01, max: Infinity, spread: 1.7}
+    ];
+    // ===== Caricamento tassi da /config/tassi.json =====
+    async function caricaTassiDaConfig() {
+      try {
+        const res = await fetch('/config/tassi.json?ts=' + Date.now(), { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        if (typeof data.indice3m === 'number') euriborBase = data.indice3m;
+        if (typeof data.extraFisso === 'number') extraFisso = data.extraFisso;
+        if (Array.isArray(data.fascePatrimonio)) fascePatrimonio = data.fascePatrimonio;
+        if (data.ultimoAggiornamento) TASSI_META.ultimoAggiornamento = data.ultimoAggiornamento;
+        TASSI_META.fonte = 'config/tassi.json';
+      } catch (e) {
+        console.warn('Impossibile caricare /config/tassi.json:', e);
+        TASSI_META.fonte = 'valori di default';
+      }
+      aggiornaBadgeTassi(true);
+      try { eseguiCalcolo(); } catch(_) {}
+    }
+    const TASSI_META = { fonte: 'valori di default', ultimoAggiornamento: null };
+    function aggiornaBadgeTassi() {
+      const el = document.getElementById('badge-tassi');
+      if (el) {
+        const when = TASSI_META.ultimoAggiornamento ? (' • agg. ' + TASSI_META.ultimoAggiornamento) : '';
+        el.textContent = `Indice base: ${Number(euriborBase).toFixed(3)}% (${TASSI_META.fonte})${when}`;
+      }
+    }
+
+
+    // ------------------ FUNZIONI UTILI ------------------
+    function formatNumber(num) {
+        return num.toLocaleString('it-IT', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    /**
+     * Calcola i vari valori (TAN, TAEG, interessi, commissione, totale dovuto) dati:
+     * - importoFido: number
+     * - durataMesi: 1..3
+     * - patrimonio: number
+     */
+    function calcolaFido(importoFido, durataMesi, patrimonio) {
+        // 1) Trova lo spread in base al patrimonio
+        let spreadFound = 0;
+        for (let f of fascePatrimonio) {
+            if (patrimonio >= f.min && patrimonio <= f.max) {
+                spreadFound = f.spread;
+                break;
+            }
+        }
+        // 2) Calcolo TAN = euriborBase + spreadFound + extraFisso
+        let TAN = euriborBase + spreadFound + extraFisso;
+
+        // 3) Commissione onnicomprensiva (CMDF)
+        //    0,2% (max 500) per trimestri se fido>8000
+        //    0,4% (max 20) se fido<=8000
+        let commissioneTrimestrale = 0;
+        if (importoFido > 8000) {
+            commissioneTrimestrale = importoFido * (0.2 / 100);
+            if (commissioneTrimestrale > 500) {
+                commissioneTrimestrale = 500;
+            }
+        } else {
+            commissioneTrimestrale = importoFido * (0.4 / 100);
+            if (commissioneTrimestrale > 20) {
+                commissioneTrimestrale = 20;
+            }
+        }
+        // pro-rata sui mesi
+        let CMDF = commissioneTrimestrale * (durataMesi / 3);
+
+        // 4) Interessi = importoFido * (TAN/100) * (durataMesi/12)
+        let interessi = importoFido * (TAN / 100) * (durataMesi / 12);
+
+        // 5) Costo totale = interessi + CMDF
+        let costoTotale = interessi + CMDF;
+
+        // 6) Importo totale dovuto = fido + costi
+        let importoDovuto = importoFido + costoTotale;
+
+        // 7) Calcolo TAEG
+        //    (Per semplicità, useremo una formula "semplificata" su base 12 mesi,
+        //     se vuoi replicare esattamente i tuoi esempi, devi usare IRR o tabelle.)
+        //    Esempio: proiettiamo costi su base annua => TAEG
+        let interessiAnnuiTeorici = importoFido * (TAN / 100);
+        let cmdfAnnuaTeorica = commissioneTrimestrale * (12 / 3); // cmdfTrimestrale * 4
+        let costiAnnuiTeorici = interessiAnnuiTeorici + cmdfAnnuaTeorica;
+        let TAEG = (costiAnnuiTeorici / importoFido) * 100;
+
+        return {
+            TAN: TAN,
+            TAEG: TAEG,
+            spread: spreadFound,
+            interessi: interessi,
+            commissione: CMDF,
+            costoTotale: costoTotale,
+            importoDovuto: importoDovuto
+        };
+    }
+
+    // ------------------ VARIABILI GLOBALI PER IL GRAFICO ------------------
+    let myChart = null;
+    let globalResults = []; // array di {durata, TAN, TAEG, interessi, commissione, costoTotale, importoDovuto}
+
+    // ------------------ CALCOLO AL CLICK ------------------
+    function eseguiCalcolo() {
+        let importoFido = parseFloat(document.getElementById("importoFido").value.replace(',', '.'));
+        let durata = parseInt(document.getElementById("durata").value);
+        let patrimonio = parseFloat(document.getElementById("patrimonio").value);
+
+        if (isNaN(importoFido) || isNaN(durata) || isNaN(patrimonio) ||
+            importoFido <= 0 || importoFido > 250000 || durata < 1 || durata > 3) {
+            alert("Inserisci valori validi (Importo <= 250.000, durata 1-3 mesi).");
+            return;
+        }
+
+        // Mostriamo le sezioni (nel caso fossero nascoste all'avvio)
+        document.querySelector('.parametri').style.display = 'block';
+        document.querySelector('.tabella-confronto').style.display = 'block';
+        document.querySelector('.risultati').style.display = 'block';
+
+        // 1) Popola la "parametri-list"
+        let parametriList = document.querySelector('.parametri-list');
+        parametriList.innerHTML = `
+      <li><strong>Importo Fido:</strong> € ${formatNumber(importoFido)}</li>
+      <li><strong>Durata Fido:</strong> ${durata} mesi</li>
+      <!-- <li><strong>Patrimonio presso Banca:</strong> € $//{formatNumber(patrimonio)}</li>-->
+    `;
+
+        // 2) Calcolo per TUTTE le durate possibili (1,2,3) e creo la tabella-confronto
+        globalResults = [];
+        for (let m = 1; m <= 3; m++) {
+            let r = calcolaFido(importoFido, m, patrimonio);
+            globalResults.push({
+                durata: m,
+                TAN: r.TAN,
+                TAEG: r.TAEG,
+                spread: r.spread,
+                interessi: r.interessi,
+                commissione: r.commissione,
+                costoTotale: r.costoTotale,
+                importoDovuto: r.importoDovuto
+            });
+        }
+
+        // Popola la tabella di confronto
+        let compareBody = document.getElementById("compare-body");
+        compareBody.innerHTML = "";
+        globalResults.forEach(row => {
+            let tr = document.createElement('tr');
+            if (row.durata === durata) {
+                tr.classList.add('highlight');
+            }
+            tr.innerHTML = `
+          <td>${row.durata} mesi</td>
+          <td>${formatNumber(row.TAN)}%</td>
+          <td>${formatNumber(row.TAEG)}%</td>
+          <td>€ ${formatNumber(row.interessi)}</td>
+          <td>€ ${formatNumber(row.commissione)}</td>
+          <td>€ ${formatNumber(row.costoTotale)}</td>
+          <td>€ ${formatNumber(row.importoDovuto)}</td>
+        `;
+            compareBody.appendChild(tr);
+        });
+
+        // 3) Prendi i dati relativi alla durata selezionata e popola la tabella "Sommario"
+        let selectedRow = globalResults.find(x => x.durata === durata);
+        let summaryBody = document.getElementById("summary-body");
+        summaryBody.innerHTML = `
+      <tr>
+        <td>${formatNumber(selectedRow.TAN)}%</td>
+        <td>${formatNumber(selectedRow.TAEG)}%</td>
+        <td>${formatNumber(selectedRow.spread)}%</td>
+        <td>€ ${formatNumber(selectedRow.interessi)}</td>
+        <td>€ ${formatNumber(selectedRow.commissione)}</td>
+        <td>€ ${formatNumber(selectedRow.costoTotale)}</td>
+        <td>€ ${formatNumber(selectedRow.importoDovuto)}</td>
+      </tr>
+    `;
+
+        // 4) Grafico: confronta il "Costo Totale del Credito" per 1,2,3 mesi
+        if (myChart) myChart.destroy();
+        let ctx = document.getElementById("myChart").getContext("2d");
+        myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: globalResults.map(r => r.durata + " mesi"),
+                datasets: [
+                    {
+                        label: 'Costo Totale del Credito',
+                        data: globalResults.map(r => parseFloat(r.costoTotale.toFixed(2))),
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '€ Costo Totale'
+                        },
+                        ticks: {
+                            callback: function (value) {
+                                return '€' + value;
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return '€' + formatNumber(context.parsed.y);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // ------------------ SCARICA EXCEL ------------------
+    /**
+     * Scarica in Excel i risultati in due fogli:
+     *  1) "RisultatoFido" con i parametri inseriti e i risultati della durata selezionata
+     *  2) "ConfrontoDurate" con i dati di 1,2,3 mesi
+     */
+    function scaricaExcel() {
+        // Se l'utente non ha ancora calcolato nulla, usciamo
+        if (!globalResults || globalResults.length === 0) {
+            alert("Non ci sono dati da esportare. Esegui prima il calcolo.");
+            return;
+        }
+
+        // Recuperiamo:
+        // - parametri di input
+        const importoFido = document.getElementById("importoFido").value;
+        const durata = parseInt(document.getElementById("durata").value);
+        const patrimonio = document.getElementById("patrimonio").value;
+
+        // - risultato della durata selezionata
+        const selectedRow = globalResults.find(x => x.durata === durata);
+        if (!selectedRow) {
+            alert("Nessun risultato corrispondente alla durata selezionata.");
+            return;
+        }
+
+        // Creiamo un nuovo workbook
+        const wb = XLSX.utils.book_new();
+
+        // ============================
+        // 1) Foglio "RisultatoFido"
+        // ============================
+        // Costruiamo un array di array (AOA) che conterrà:
+        // RIGA 1: Titolo
+        // RIGA 2: Data e ora
+        // RIGA 3: vuota
+        // RIGA 4: "PARAMETRI SELEZIONATI"
+        // RIGHE 5..7: importo fido, durata, patrimonio
+        // RIGA 8: vuota
+        // RIGA 9: "RISULTATI (DURATA SELEZIONATA)"
+        // RIGA 10: intestazioni
+        // RIGA 11: valori
+        const now = new Date();
+        const dataOra = now.toLocaleString("it-IT");  // es. "26/03/2025, 15:24:30"
+
+        let sheet1Data = [
+            ["CALCOLO FIDO BANCARIO"],      // riga1
+            //["Data di calcolo: " + dataOra], // riga2
+            [], // riga3 vuota
+            ["PARAMETRI SELEZIONATI"],     // riga4
+            ["Importo Fido:", importoFido],
+            ["Durata (mesi):", durata],
+            //["Patrimonio:", patrimonio],
+            [], // riga8 vuota
+            ["RISULTATI (DURATA SELEZIONATA)"], // riga9
+            ["TAN (%)", "TAEG (%)", "Spread (%)", "Interessi (€)", "Commissione (€)", "Costo Totale (€)", "Totale Dovuto (€)"], // riga10
+            [
+                selectedRow.TAN.toFixed(3) + "%",
+                selectedRow.TAEG.toFixed(3) + "%",
+                selectedRow.spread.toFixed(2) + "%",
+                selectedRow.interessi.toFixed(2),
+                selectedRow.commissione.toFixed(2),
+                selectedRow.costoTotale.toFixed(2),
+                selectedRow.importoDovuto.toFixed(2)
+            ] // riga11
+        ];
+
+        // Creiamo il worksheet
+        let ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
+
+        // Larghezza colonne (opzionale)
+        ws1["!cols"] = [
+            {wch: 35},  // colonna A più larga
+            {wch: 25},  // colonna B
+            {wch: 20},
+            {wch: 20},
+            {wch: 20},
+            {wch: 20},
+            {wch: 20},
+        ];
+
+        // Opzionalmente, aggiungiamo un po' di stile alle celle di intestazione:
+        // (Attenzione: la formattazione XLSX è supportata in modo limitato e non sempre
+        //  funziona in tutti i viewer.)
+        // Ad esempio, vogliamo rendere grassetto e con sfondo le righe 1,4,9,10:
+        const headerCells1 = ["A1", "A4", "A9", "A10", "B10", "C10", "D10", "E10", "F10", "G10"];
+        headerCells1.forEach(cell => {
+            if (ws1[cell]) {
+                ws1[cell].s = {
+                    font: {bold: true, color: {rgb: "FFFFFF"}},
+                    fill: {fgColor: {rgb: "4aa14a"}}, // verde
+                    alignment: {horizontal: "center"}
+                };
+            }
+        });
+
+        // Aggiungiamo il foglio al workbook
+        XLSX.utils.book_append_sheet(wb, ws1, "RisultatoFido");
+
+        // ============================
+        // 2) Foglio "ConfrontoDurate"
+        // ============================
+        // Prepariamo le righe:
+        // RIGA 1: Titolo "CONFRONTO 1, 2, 3 MESI"
+        // RIGA 2: vuota
+        // RIGA 3: intestazioni
+        // RIGHE 4..: i dati di globalResults (1,2,3 mesi)
+        let sheet2Data = [
+            ["CONFRONTO 1, 2, 3 MESI"],  // riga1
+            [], // riga2 vuota
+            ["Durata (mesi)", "TAN (%)", "TAEG (%)", "Spread (%)", "Interessi (€)", "Commissione (€)", "Costo Totale (€)", "Importo Dovuto (€)"] // riga3
+        ];
+
+        // Righe dei dati (1,2,3 mesi)
+        globalResults.forEach(row => {
+            sheet2Data.push([
+                row.durata,
+                row.TAN.toFixed(3) + "%",
+                row.TAEG.toFixed(3) + "%",
+                row.spread.toFixed(2) + "%",
+                row.interessi.toFixed(2),
+                row.commissione.toFixed(2),
+                row.costoTotale.toFixed(2),
+                row.importoDovuto.toFixed(2)
+            ]);
+        });
+
+        let ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
+
+        // Colonne un po' più larghe
+        ws2["!cols"] = [
+            {wch: 12},
+            {wch: 10},
+            {wch: 10},
+            {wch: 10},
+            {wch: 14},
+            {wch: 14},
+            {wch: 14},
+            {wch: 14}
+        ];
+
+        // Applichiamo stile all'intestazione:
+        const headerCells2 = ["A1", "A3", "B3", "C3", "D3", "E3", "F3", "G3", "H3"];
+        headerCells2.forEach(cell => {
+            if (ws2[cell]) {
+                ws2[cell].s = {
+                    font: {bold: true, color: {rgb: "FFFFFF"}},
+                    fill: {fgColor: {rgb: "4aa14a"}},
+                    alignment: {horizontal: "center"}
+                };
+            }
+        });
+
+        XLSX.utils.book_append_sheet(wb, ws2, "ConfrontoDurate");
+
+        // ============================
+        // Scrittura su file
+        // ============================
+        XLSX.writeFile(wb, "calcolo_fido.xlsx");
+    }
+
+    // ------------------ EVENT LISTENERS ------------------
+    document.addEventListener("DOMContentLoaded", function () {
+        try { caricaTassiDaConfig(); } catch(_) {}
+        document.getElementById("btnRefreshTassi")?.addEventListener("click", caricaTassiDaConfig);
+        // All'avvio, nascondi le sezioni dei risultati, se vuoi
+        document.querySelector('.parametri').style.display = 'none';
+        document.querySelector('.tabella-confronto').style.display = 'none';
+        document.querySelector('.risultati').style.display = 'none';
+
+        document.getElementById("btnCalcola").addEventListener("click", eseguiCalcolo);
+        document.getElementById("btnExcel").addEventListener("click", scaricaExcel);
+    });
+
+</script>
+</html>
