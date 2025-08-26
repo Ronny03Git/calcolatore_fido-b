@@ -1,0 +1,34 @@
+name: Aggiorna tassi (giornaliero)
+
+on:
+  schedule:
+    - cron: '5 9 * * *'   # ogni giorno 09:05 UTC (~11:05 in Italia d’estate)
+  workflow_dispatch: {}    # permette "Run workflow" manuale
+
+permissions:
+  contents: write          # serve per committare il JSON aggiornato
+
+jobs:
+  update-tassi:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Aggiorna tassi da ECB
+        run: node scripts/update_tassi.js
+
+      - name: Commit & push se ci sono modifiche
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Nessuna modifica da committare."; exit 0; fi
+          git commit -m "chore: aggiorna tassi (azione automatica)"
+          git push
