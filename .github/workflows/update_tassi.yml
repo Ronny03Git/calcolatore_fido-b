@@ -2,11 +2,11 @@ name: Aggiorna tassi (giornaliero)
 
 on:
   schedule:
-    - cron: '5 9 * * *'   # ogni giorno 09:05 UTC (~11:05 in Italia d’estate)
-  workflow_dispatch: {}    # permette "Run workflow" manuale
+    - cron: '5 9 * * *'   # 09:05 UTC ≈ 11:05 in Italia quando c'è l'ora legale
+  workflow_dispatch: {}
 
 permissions:
-  contents: write          # serve per committare il JSON aggiornato
+  contents: write
 
 jobs:
   update-tassi:
@@ -15,20 +15,52 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+      - name: Scarica ultimo €STR 3M composto e aggiorna JSON
+        shell: bash
+        run: |
+          set -e
+          SERIES="EST.B.EU000A2QQF32.CR"
+          U1="https://sdw-wsrest.ecb.europa.eu/service/data/EST/${SERIES}?lastNObservations=1&format=csvdata"
+          U2="https://data-api.ecb.europa.eu/service/data/EST/${SERIES}?lastNObservations=1&format=csvdata&detail=dataonly"
 
-      - name: Aggiorna tassi da ECB
-        run: node scripts/update_tassi.js
+          get_val () {
+            curl -fsSL \
+              -H 'Accept: text/csv' \
+              -H 'User-Agent: Mozilla/5.0 AutoTassi' \
+              -H 'Referer: https://www.ecb.europa.eu/' \
+              "$1" \
+            | grep -v '^#' \
+            | tail -n 1 \
+            | awk -F, '{print $1" "$2}'
+          }
 
-      - name: Commit & push se ci sono modifiche
+          out="$(get_val "$U1" || true)"
+          if [ -z "$out" ]; then
+            out="$(get_val "$U2" || true)"
+          fi
+
+          if [ -n "$out" ]; then
+            d="$(echo "$out" | awk '{print $1}')"
+            v="$(echo "$out" | awk '{print $2}')"
+            echo "Ultima osservazione: $d = $v"
+            # Aggiorna config/tassi.json in-place
+            tmp="$(mktemp)"
+            jq --arg d "$d" --arg v "$v" \
+               '.ultimoAggiornamento=$d | .indice3m=($v|tonumber)' \
+               config/tassi.json > "$tmp" && mv "$tmp" config/tassi.json
+          else
+            echo "Non sono riuscito a leggere il valore (WAF/API). Lascio i valori correnti."
+          fi
+
+      - name: Commit & push se cambiato
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if git diff --cached --quiet; then
-            echo "Nessuna modifica da committare."; exit 0; fi
-          git commit -m "chore: aggiorna tassi (azione automatica)"
-          git push
+          if git diff --quiet -- config/tassi.json ; then
+            echo "Nessuna modifica: niente commit."
+          else
+            git add config/tassi.json
+            git commit -m "chore: aggiorna tassi (azione automatica)"
+            git push
+          fi
