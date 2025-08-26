@@ -2,7 +2,7 @@ name: Aggiorna tassi (giornaliero)
 
 on:
   schedule:
-    - cron: '5 9 * * *'   # 09:05 UTC ≈ 11:05 in Italia quando c'è l'ora legale
+    - cron: '5 9 * * *'   # 09:05 UTC ≈ 11:05 Italia in ora legale
   workflow_dispatch: {}
 
 permissions:
@@ -14,6 +14,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Assicura jq
+        run: |
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y jq
+          fi
 
       - name: Scarica ultimo €STR 3M composto e aggiorna JSON
         shell: bash
@@ -43,7 +50,6 @@ jobs:
             d="$(echo "$out" | awk '{print $1}')"
             v="$(echo "$out" | awk '{print $2}')"
             echo "Ultima osservazione: $d = $v"
-            # Aggiorna config/tassi.json in-place
             tmp="$(mktemp)"
             jq --arg d "$d" --arg v "$v" \
                '.ultimoAggiornamento=$d | .indice3m=($v|tonumber)' \
